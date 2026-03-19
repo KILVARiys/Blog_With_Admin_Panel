@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ post[1] }} - Мой блог</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <a href="{{ url_for('index') }}">На главную</a>
+        {% if current_user.is_authenticated %}
+            <a href="{{ url_for('admin') }}">Админка</a>
+            <a href="{{ url_for('logout') }}">Выйти</a>
+        {% else %}
+            <a href="{{ url_for('login') }}">Войти</a>
+        {% endif %}
+    </nav>
+    
+    <article>
+        <h1>{{ post[1] }}</h1>
+        <p><small>Опубликовано: {{ post[3] }}</small></p>
+        <div>
+            {{ post[2] }}
+        </div>
+    </article>
+</body>
+</html>
