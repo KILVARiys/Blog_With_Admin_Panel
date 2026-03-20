@@ -1,0 +1,140 @@
+/* Общие стили */
+body {
+    font-family: Arial, sans-serif;
+    line-height: 1.6;
+    margin: 0;
+    padding: 20px;
+    background-color: #f4f4f4;
+}
+
+/* Навигация */
+nav {
+    background-color: #333;
+    color: white;
+    padding: 10px;
+    margin-bottom: 20px;
+}
+
+nav a {
+    color: white;
+    text-decoration: none;
+    margin-right: 15px;
+}
+
+nav a:hover {
+    text-decoration: underline;
+}
+
+/* Контент */
+main {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+}
+
+/* Формы */
+form div {
+    margin-bottom: 15px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="password"],
+textarea {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+button, .button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+}
+
+button:hover, .button:hover {
+    background-color: #0056b3;
+}
+
+/* Таблицы */
+.posts-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+.posts-table th,
+.posts-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+}
+
+.posts-table th {
+    background-color: #f2f2f2;
+}
+
+.edit-btn {
+    background-color: #28a745;
+    color: white;
+    padding: 5px 10px;
+    text-decoration: none;
+    border-radius: 3px;
+    margin-right: 5px;
+}
+
+.delete-btn {
+    background-color: #dc3545;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.flashes {
+    background-color: #d4edda;
+    color: #155724;
+    padding: 10px;
+    border-radius: 4px;
+    list-style: none;
+}
+
+/* Flash сообщения */
+.alert {
+    padding: 10px;
+    margin-bottom: 15px;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    background-color: #d4edda;
+    color: #155724;
+    border-left-color: #28a745;
+}
+
+.alert-error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border-left-color: #dc3545;
+}
+
+.alert-info {
+    background-color: #d1ecf1;
+    color: #0c5460;
+    border-left-color: #17a2b8;
+}

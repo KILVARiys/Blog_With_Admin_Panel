@@ -1,31 +1,19 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Админ-панель</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
+{% extends "base.html" %}
+
+{% block title %}Админ-панель{% endblock %}
+
+{% block content %}
     <h1>Админ-панель</h1>
     <p>Привет, {{ current_user.username }}!</p>
-    <nav>
-        <a href="{{ url_for('index') }}">На сайт</a>
-        <a href="{{ url_for('new_post') }}">Создать новый пост</a>
-        <a href="{{ url_for('logout') }}">Выйти</a>
-    </nav>
     
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <ul class="flashes">
-            {% for message in messages %}
-                <li>{{ message }}</li>
-            {% endfor %}
-            </ul>
-        {% endif %}
-    {% endwith %}
+    <div class="admin-actions">
+        <a href="{{ url_for('new_post') }}" class="button">Создать новый пост</a>
+    </div>
     
     <h2>Все посты</h2>
+    
     {% if posts %}
-        <table border="1">
+        <table class="posts-table">
             <thead>
                 <tr>
                     <th>ID</th>
@@ -41,9 +29,12 @@
                     <td>{{ post[1] }}</td>
                     <td>{{ post[2] }}</td>
                     <td>
-                        <a href="{{ url_for('edit_post', post_id=post[0]) }}">Редактировать</a>
+                        <a href="{{ url_for('edit_post', post_id=post[0]) }}" class="edit-btn">Редактировать</a>
+                        
+                        <!-- Форма удаления с CSRF токеном -->
                         <form action="{{ url_for('delete_post', post_id=post[0]) }}" method="POST" style="display:inline;">
-                            <button type="submit" onclick="return confirm('Удалить пост?')">Удалить</button>
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="delete-btn" onclick="return confirm('Удалить пост?')">Удалить</button>
                         </form>
                     </td>
                 </tr>
@@ -53,5 +44,4 @@
     {% else %}
         <p>Пока нет постов. <a href="{{ url_for('new_post') }}">Создай первый!</a></p>
     {% endif %}
-</body>
-</html>
+{% endblock %}

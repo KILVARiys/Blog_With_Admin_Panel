@@ -1,19 +1,32 @@
 import sqlite3
+import os
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf.csrf import CSRFProtect
+from dotenv import load_dotenv
+
+# Загрузка переменных окружения из .env файла
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = 'супер-секретный-ключ-для-сессий'  # Обязательно для Flask-Login
+
+# Настройки из переменных окружения
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'default-secret-key-change-me')
+app.config['WTF_CSRF_ENABLED'] = True  # Включаем CSRF защиту
+app.config['WTF_CSRF_SECRET_KEY'] = os.getenv('SECRET_KEY')
+
+# Инициализация CSRF защиты
+csrf = CSRFProtect(app)
 
 # Настройка Flask-Login
 login_manager = LoginManager()
 login_manager.init_app(app)
-login_manager.login_view = 'login'  # Имя функции для роута входа
+login_manager.login_view = 'login'
 login_manager.login_message = 'Пожалуйста, войдите для доступа к этой странице'
 
-# Модель User
+# Модель User (оставляем как есть)
 class User(UserMixin):
     def __init__(self, id, username, password_hash):
         self.id = id
@@ -22,7 +35,7 @@ class User(UserMixin):
     
     @staticmethod
     def get(user_id):
-        conn = sqlite3.connect('blog.db')
+        conn = sqlite3.connect(os.getenv('DATABASE_PATH', 'blog.db'))
         cursor = conn.cursor()
         cursor.execute('SELECT id, username, password_hash FROM users WHERE id = ?', (user_id,))
         user_data = cursor.fetchone()
@@ -34,7 +47,7 @@ class User(UserMixin):
     
     @staticmethod
     def find_by_username(username):
-        conn = sqlite3.connect('blog.db')
+        conn = sqlite3.connect(os.getenv('DATABASE_PATH', 'blog.db'))
         cursor = conn.cursor()
         cursor.execute('SELECT id, username, password_hash FROM users WHERE username = ?', (username,))
         user_data = cursor.fetchone()
@@ -48,9 +61,10 @@ class User(UserMixin):
 def load_user(user_id):
     return User.get(user_id)
 
-# Инициализация БД
+# Функция инициализации БД (обновленная)
 def init_db():
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     # Таблица постов
@@ -76,20 +90,20 @@ def init_db():
     conn.close()
     print("База данных инициализирована")
 
-# Роут для создания первого администратора (УДАЛИТЬ ПОСЛЕ ИСПОЛЬЗОВАНИЯ!)
-@app.route('/setup-admin')
-def setup_admin():
-    conn = sqlite3.connect('blog.db')
+# Функция для создания администратора из переменных окружения
+def create_admin_if_not_exists():
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
-    # Проверим, есть ли уже пользователи
+    # Проверяем, есть ли пользователи
     cursor.execute('SELECT COUNT(*) FROM users')
     count = cursor.fetchone()[0]
     
     if count == 0:
-        # Создаем администратора
-        username = 'admin'
-        password = 'admin123'  # Поменяй на свой пароль!
+        # Берем данные из .env или используем значения по умолчанию
+        username = os.getenv('ADMIN_USERNAME', 'admin')
+        password = os.getenv('ADMIN_PASSWORD', 'admin123')
         password_hash = generate_password_hash(password)
         
         cursor.execute(
@@ -97,16 +111,18 @@ def setup_admin():
             (username, password_hash)
         )
         conn.commit()
-        conn.close()
-        return 'Администратор создан! Логин: admin, Пароль: admin123'
+        print(f"Администратор создан! Логин: {username}, Пароль: {password}")
+        print("ВАЖНО: Измените пароль после первого входа!")
     else:
-        conn.close()
-        return 'Администратор уже существует'
+        print("Администратор уже существует")
+    
+    conn.close()
 
-# Публичные роуты
+# Роуты
 @app.route('/')
 def index():
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, content, created_at FROM posts ORDER BY created_at DESC')
     posts = cursor.fetchall()
@@ -116,7 +132,8 @@ def index():
 
 @app.route('/post/<int:post_id>')
 def show_post(post_id):
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, content, created_at FROM posts WHERE id = ?', (post_id,))
     post = cursor.fetchone()
@@ -127,7 +144,6 @@ def show_post(post_id):
     else:
         return render_template('404.html'), 404
 
-# Роуты аутентификации
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -138,10 +154,10 @@ def login():
         
         if user and check_password_hash(user.password_hash, password):
             login_user(user)
-            flash('Вы успешно вошли в систему!')
+            flash('Вы успешно вошли в систему!', 'success')
             return redirect(url_for('admin'))
         else:
-            flash('Неверное имя пользователя или пароль')
+            flash('Неверное имя пользователя или пароль', 'error')
             return render_template('login.html')
     
     return render_template('login.html')
@@ -150,15 +166,14 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash('Вы вышли из системы')
+    flash('Вы вышли из системы', 'info')
     return redirect(url_for('index'))
 
-# Админ-роуты (защищенные)
 @app.route('/admin')
 @login_required
 def admin():
-    # Получаем все посты из БД для отображения в админке
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('SELECT id, title, created_at FROM posts ORDER BY created_at DESC')
     posts = cursor.fetchall()
@@ -173,7 +188,13 @@ def new_post():
         title = request.form['title']
         content = request.form['content']
         
-        conn = sqlite3.connect('blog.db')
+        # Простая валидация
+        if not title or not content:
+            flash('Заполните все поля!', 'error')
+            return render_template('admin/post_form.html')
+        
+        db_path = os.getenv('DATABASE_PATH', 'blog.db')
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute(
             'INSERT INTO posts (title, content) VALUES (?, ?)',
@@ -182,7 +203,7 @@ def new_post():
         conn.commit()
         conn.close()
         
-        flash('Пост успешно создан!')
+        flash('Пост успешно создан!', 'success')
         return redirect(url_for('admin'))
     
     return render_template('admin/post_form.html')
@@ -190,12 +211,17 @@ def new_post():
 @app.route('/admin/post/<int:post_id>/edit', methods=['GET', 'POST'])
 @login_required
 def edit_post(post_id):
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     
     if request.method == 'POST':
         title = request.form['title']
         content = request.form['content']
+        
+        if not title or not content:
+            flash('Заполните все поля!', 'error')
+            return render_template('admin/post_form.html', post=(title, content))
         
         cursor.execute(
             'UPDATE posts SET title = ?, content = ? WHERE id = ?',
@@ -204,7 +230,7 @@ def edit_post(post_id):
         conn.commit()
         conn.close()
         
-        flash('Пост успешно обновлен!')
+        flash('Пост успешно обновлен!', 'success')
         return redirect(url_for('admin'))
     
     # GET запрос - показываем форму с данными поста
@@ -215,26 +241,27 @@ def edit_post(post_id):
     if post:
         return render_template('admin/post_form.html', post=post)
     else:
-        flash('Пост не найден')
+        flash('Пост не найден', 'error')
         return redirect(url_for('admin'))
 
 @app.route('/admin/post/<int:post_id>/delete', methods=['POST'])
 @login_required
 def delete_post(post_id):
-    conn = sqlite3.connect('blog.db')
+    db_path = os.getenv('DATABASE_PATH', 'blog.db')
+    conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute('DELETE FROM posts WHERE id = ?', (post_id,))
     conn.commit()
     conn.close()
     
-    flash('Пост удален')
+    flash('Пост удален', 'success')
     return redirect(url_for('admin'))
 
-# Обработчик ошибки 404
 @app.errorhandler(404)
 def page_not_found(e):
     return render_template('404.html'), 404
 
 if __name__ == '__main__':
-    init_db()  # Создаем таблицы при запуске
-    app.run(debug=True)
+    init_db()
+    create_admin_if_not_exists()  # Создаем админа из .env
+    app.run(debug=os.getenv('FLASK_DEBUG', 'True').lower() == 'true')
